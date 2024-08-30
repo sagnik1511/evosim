@@ -147,3 +147,9 @@ __pypackages__/
 
 # For now removing test folder
 tests/
+
+# explorations
+test_explorations/
+
+# Logs
+logs/

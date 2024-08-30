@@ -1,12 +1,12 @@
 import random
-from typing import List, Dict, Tuple
+from typing import Dict, List, Tuple
+
 import numpy as np
 
+from evosim.elements import agents, obstacles, resources
 from evosim.maps.base_map import BaseMap
 from evosim.maps.cells import Pos
-from evosim.elements import agents, obstacles, resources
 from evosim.utils.logger import get_logger
-
 
 logger = get_logger()
 
@@ -15,11 +15,11 @@ MapState = Dict[str, List[List[int]]]
 
 class SinglePlayerMap(BaseMap):
 
-    def __init__(self):
+    def __init__(self, agent: agents.Agent):
         super().__init__(side_length=32)
-        self.obs_pct: float = 0.2
-        self.res_pct: float = 0.3
-        self.agent = agents.L1Agent(Pos(0, 0))
+        self.obs_pct: float = 0.1
+        self.res_pct: float = 0.2
+        self.agent = agent
         self.directions = {0: (-1, 0), 1: (1, 0), 2: (0, 1), 3: (0, -1)}
 
     def _set_elements_on_map(self, agent: agents.Agent) -> None:
@@ -117,7 +117,7 @@ class SinglePlayerMap(BaseMap):
         """
         return random.randint(0, 3)
 
-    def reset(self) -> Tuple[MapState, bool]:
+    def reset(self) -> Tuple[MapState, bool, bool]:
         """Resets the map and set a new random initial moment
 
         Reset also generates a basic overview of the map objects
@@ -138,7 +138,7 @@ class SinglePlayerMap(BaseMap):
         if np.sum(np.array(game_state["Wood"])) == 0:
             terminated = True
 
-        return game_state, terminated
+        return game_state, terminated, False
 
     def step(self, action: int) -> Tuple[MapState, int, bool, bool]:
         """Env updates upon an action
@@ -199,6 +199,7 @@ class SinglePlayerMap(BaseMap):
                 # Checking is resources are in the cell
                 if cell.c_type != "Wood":
                     logger.warning(f"{cell} can't be moved. Move wasted.")
+                    reward = -1
                 else:
                     # Transfer resource energy to agent
                     self.agent.hp += cell.placeholder.hp
@@ -223,6 +224,7 @@ class SinglePlayerMap(BaseMap):
             cell.clear()
             truncated = True
             reward = -100
+            logger.warning(f"Agent has died on {cell.pos}")
 
         # Fetch current state and check whether the game can run further
         curr_game_state = self._get_current_state()
@@ -233,14 +235,14 @@ class SinglePlayerMap(BaseMap):
         return curr_game_state, reward, terminated, truncated
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    env = SinglePlayerMap()
-    obs, done = env.reset()
+#     env = SinglePlayerMap()
+#     obs, done = env.reset()
 
-    moves = 100
-    while not done and moves > 0:
-        action = env.sample()
-        obs, reward, truncated, done = env.step(action)
-        print(reward, truncated, done)
-        moves -= 1
+#     moves = 100
+#     while not done and moves > 0:
+#         action = env.sample()
+#         obs, reward, truncated, done = env.step(action)
+#         print(reward, truncated, done)
+#         moves -= 1
