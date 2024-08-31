@@ -21,6 +21,9 @@ class Pos:
 
         return Pos(x, y)
 
+    def __eq__(self, pos: "Pos"):
+        return self.x == pos.x and self.y == pos.y
+
 
 class Cell:
 

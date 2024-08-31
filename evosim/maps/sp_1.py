@@ -15,11 +15,24 @@ MapState = Dict[str, List[List[int]]]
 
 class SinglePlayerMap(BaseMap):
 
-    def __init__(self, agent: agents.Agent):
-        super().__init__(side_length=32)
-        self.obs_pct: float = 0.1
-        self.res_pct: float = 0.2
+    def __init__(
+        self,
+        agent: agents.Agent,
+        side_length: int = 32,
+        obstacle_percent: float = 0.1,
+        resource_percent: float = 0.2,
+        waste_move_penalty: float = 1,
+        death_penalty: float = 1,
+        finish_reward: float = 100.0,
+    ):
+        super().__init__(side_length=side_length)
+        self.obs_pct = obstacle_percent
+        self.res_pct = resource_percent
+        self.wasted_pn = waste_move_penalty
+        self.death_pn = death_penalty
         self.agent = agent
+        self.finish_reward = finish_reward
+
         self.directions = {0: (-1, 0), 1: (1, 0), 2: (0, 1), 3: (0, -1)}
 
     def _set_elements_on_map(self, agent: agents.Agent) -> None:
@@ -190,16 +203,16 @@ class SinglePlayerMap(BaseMap):
             # Checking if the cell is free to move the agent
             if self._is_pos_free(next_pos):
 
+                logger.info(f"Agent is moved from {agent_pos} to {next_pos}")
                 # Moved the agent to blank cell
                 self._move_object(agent_pos, next_pos)
                 agent_pos = next_pos
-                logger.info(f"Agent is moved from {agent_pos} to {next_pos}")
             else:
 
                 # Checking is resources are in the cell
                 if cell.c_type != "Wood":
                     logger.warning(f"{cell} can't be moved. Move wasted.")
-                    reward = -1
+                    reward = -self.wasted_pn
                 else:
                     # Transfer resource energy to agent
                     self.agent.hp += cell.placeholder.hp
@@ -223,14 +236,14 @@ class SinglePlayerMap(BaseMap):
             cell = self.fetch_cell(agent_pos)
             cell.clear()
             truncated = True
-            reward = -100
+            reward = -self.death_pn
             logger.warning(f"Agent has died on {cell.pos}")
 
         # Fetch current state and check whether the game can run further
         curr_game_state = self._get_current_state()
         if np.sum(np.array(curr_game_state["Wood"])) == 0:
             terminated = True
-            reward = 10
+            reward = self.finish_reward
 
         return curr_game_state, reward, terminated, truncated
 

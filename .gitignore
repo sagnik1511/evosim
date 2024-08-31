@@ -153,3 +153,6 @@ test_explorations/
 
 # Logs
 logs/
+
+# utility scripts created along the dev period
+util_scripts

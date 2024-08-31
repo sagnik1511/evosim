@@ -1,6 +1,7 @@
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from evosim.maps.cells import Pos, Cell
+from dataclasses import dataclass
+
+from evosim.maps.cells import Cell, Pos
 
 
 @dataclass
@@ -13,11 +14,11 @@ class Element(ABC):
 
 class Resource(Element):
 
-    def __init__(self, pos: Pos, hp: int):
+    def __init__(self, pos: Pos, hp: int, max_hp: int, grow_delta: int = 1):
         super().__init__(pos=pos)
-        self.hp: int = hp
-        self.max_hp: int = 1000
-        self.grow_delta: int = 1
+        self.hp = hp
+        self.max_hp = max_hp
+        self.grow_delta: grow_delta
 
     def grow(self) -> None:
         self.hp = max(self.hp, self.hp + self.grow_delta)

@@ -73,15 +73,19 @@ class Agent(ABC):
 
 class L1Agent(Agent):
 
-    def __init__(self, policy: Union[None, BasePolicy]):
+    def __init__(
+        self, policy: Union[None, BasePolicy], hp: int = 1000, run_delta: int = 10
+    ):
         super().__init__(policy=policy)
-        self.hp = 1000
-        self.run_delta = 10
+        self.hp = hp
+        self.run_delta = run_delta
 
     def act(self, state: MapState):
-        obs = np.stack([state["Rock"], state["Wood"], state["Agent"]], axis=0)
-        probs = self.policy.act(obs)
-        return torch.argmax(probs, axis=1).item(), probs.detach().numpy()
+        obs = np.stack([state["Rock"], state["Wood"], state["Agent"]], axis=0).astype(
+            np.float32
+        )
+        action, probs = self.policy.act(obs)
+        return action.item(), probs
 
     def observe(self, obs, action, log_probs, reward):
         obs = np.stack([obs["Rock"], obs["Wood"], obs["Agent"]], axis=0)
