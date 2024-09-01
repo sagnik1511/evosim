@@ -156,3 +156,9 @@ logs/
 
 # utility scripts created along the dev period
 util_scripts
+
+#WandB Stuff
+wandb/
+
+# Stored models
+*.pkl

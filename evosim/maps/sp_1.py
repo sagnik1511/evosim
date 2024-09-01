@@ -1,15 +1,18 @@
 import random
 from typing import Dict, List, Tuple
 
+import cv2
 import numpy as np
 
+import wandb
 from evosim.elements import agents, obstacles, resources
+from evosim.maps.base_logger import BaseLogger
 from evosim.maps.base_map import BaseMap
 from evosim.maps.cells import Pos
 from evosim.utils.logger import get_logger
+from evosim.utils.viz import save_episode_gif
 
 logger = get_logger()
-
 MapState = Dict[str, List[List[int]]]
 
 
@@ -145,6 +148,7 @@ class SinglePlayerMap(BaseMap):
             Tuple[bool, Dict[str, List[List[int]]]]: done state and game state
         """
         self.set_map()
+        self.agent.reset()
         self._set_elements_on_map(self.agent)
         game_state = self._get_current_state()
         terminated = False
@@ -198,6 +202,7 @@ class SinglePlayerMap(BaseMap):
             except:
                 # If the position isn't valid, skip the step
                 logger.warning(f"Not possible to move to {next_pos}. Wasted Step")
+                reward -= self.wasted_pn
                 return self._get_current_state(), reward, terminated, truncated
 
             # Checking if the cell is free to move the agent
@@ -211,11 +216,11 @@ class SinglePlayerMap(BaseMap):
 
                 # Checking is resources are in the cell
                 if cell.c_type != "Wood":
-                    logger.warning(f"{cell} can't be moved. Move wasted.")
+                    logger.warning(f"Not possible to move to {cell}. Wasted Step")
                     reward = -self.wasted_pn
                 else:
                     # Transfer resource energy to agent
-                    self.agent.hp += cell.placeholder.hp
+                    self.agent.hp += cell.placeholder.hp / 5  # * self.res_energy_ratio
                     reward += cell.placeholder.hp
 
                     # Moved the agent after consuming next_pos resources
@@ -224,7 +229,6 @@ class SinglePlayerMap(BaseMap):
                     logger.info(
                         f"Agent is moved from {agent_pos} to {next_pos} after consuming wood"
                     )
-
         else:
             raise ValueError(f"Action={action} not defined")
 
@@ -239,8 +243,10 @@ class SinglePlayerMap(BaseMap):
             reward = -self.death_pn
             logger.warning(f"Agent has died on {cell.pos}")
 
-        # Fetch current state and check whether the game can run further
+        # Fetch current state
         curr_game_state = self._get_current_state()
+
+        # Check whether the game can run further
         if np.sum(np.array(curr_game_state["Wood"])) == 0:
             terminated = True
             reward = self.finish_reward
@@ -248,14 +254,59 @@ class SinglePlayerMap(BaseMap):
         return curr_game_state, reward, terminated, truncated
 
 
-# if __name__ == "__main__":
+class SinglePlayerMapLogger(BaseLogger):
 
-#     env = SinglePlayerMap()
-#     obs, done = env.reset()
+    def __init__(
+        self,
+        project_name: str,
+        sim_fps: int = 5,
+    ):
+        wandb.init(project=project_name)
+        self.obs = []
+        self.sim_fps = sim_fps
 
-#     moves = 100
-#     while not done and moves > 0:
-#         action = env.sample()
-#         obs, reward, truncated, done = env.step(action)
-#         print(reward, truncated, done)
-#         moves -= 1
+    def log_step(self, episode: int, state: MapState, agent_hp: float, reward: float):
+        # Log states (accumulate states in a list per episode)
+        if not hasattr(self, f"episode_{episode}_states"):
+            setattr(self, f"episode_{episode}_states", [])
+        getattr(self, f"episode_{episode}_states").append(state)
+
+        # Log reward and health
+        wandb.log(
+            {
+                f"Episode_{episode}/reward": reward,
+                f"Episode_{episode}/agent_health": agent_hp,
+            }
+        )
+
+    @staticmethod
+    def _process_n_resize_states(state, scaled_height, scaled_width):
+        frame = (
+            np.stack([state["Rock"], state["Wood"], state["Agent"]], axis=-1) * 255.0
+        )
+        frame = cv2.resize(
+            frame, (scaled_height, scaled_width), interpolation=cv2.INTER_NEAREST
+        )
+
+        return frame
+
+    def log_episode(self, episode: int):
+        states = getattr(self, f"episode_{episode}_states", [])
+        if states:
+            # Process states into np.ndarray frames
+            frames = [
+                self._process_n_resize_states(state, 256, 256) for state in states
+            ]
+            save_episode_gif(frames, "/tmp/evosim/sp-vid.gif")
+            # video = np.array(frames)
+            wandb.log(
+                {
+                    f"Episode_{episode}/sim": wandb.Video(
+                        "/tmp/evosim/sp-vid.gif", fps=self.sim_fps, format="mp4"
+                    )
+                }
+            )
+            delattr(self, f"episode_{episode}_states")
+
+    def finish(self):
+        wandb.finish()

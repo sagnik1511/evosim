@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Union
 
 import numpy as np
-import torch
 
 from evosim.maps.base_map import BaseMap
 from evosim.maps.cells import Pos
@@ -36,6 +35,10 @@ class Agent(ABC):
     def run(self):
         pass
 
+    @abstractmethod
+    def reset(self):
+        pass
+
     def save(self):
         """Save the agent in a pkl file"""
         if not os.path.isdir(self.save_directory):
@@ -45,12 +48,13 @@ class Agent(ABC):
 
         artifact_path = os.path.join(self.save_directory, self.artifact_name) + ".pkl"
 
-        with open(artifact_path, "w") as f:
+        with open(artifact_path, "wb") as f:
             pickle.dump(self, f)
 
         logger.info(f"Agent has been saved at - {artifact_path}")
 
-    def load(self, artifact_path) -> "BasePolicy":
+    @staticmethod
+    def load(artifact_path: str) -> "Agent":
         """Loads the saved agent
 
         Args:
@@ -65,8 +69,10 @@ class Agent(ABC):
         if not os.path.isfile(artifact_path):
             raise FileNotFoundError(f"{artifact_path} doesn't exist")
 
-        with open(artifact_path, "r") as f:
+        with open(artifact_path, "rb") as f:
             instance = pickle.load(f)
+            if not isinstance(instance, Agent):
+                raise AssertionError(f"{instance=} Not an agent..")
 
         return instance
 
@@ -78,6 +84,7 @@ class L1Agent(Agent):
     ):
         super().__init__(policy=policy)
         self.hp = hp
+        self.__start_hp = hp
         self.run_delta = run_delta
 
     def act(self, state: MapState):
@@ -96,3 +103,6 @@ class L1Agent(Agent):
 
     def run(self):
         self.hp -= self.run_delta
+
+    def reset(self) -> None:
+        self.hp = self.__start_hp

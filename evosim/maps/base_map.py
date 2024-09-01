@@ -1,6 +1,7 @@
-from typing import List, Any, Dict
-from evosim.maps.cells import Pos, Cell
 from abc import abstractmethod
+from typing import Any, Dict, List
+
+from evosim.maps.cells import Cell, Pos
 
 
 class BaseMap:
@@ -66,6 +67,10 @@ class BaseMap:
 
     @abstractmethod
     def _get_current_state(self):
+        pass
+
+    @abstractmethod
+    def log_observation(self):
         pass
 
 
