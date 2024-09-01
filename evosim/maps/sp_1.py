@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -259,9 +259,10 @@ class SinglePlayerMapLogger(BaseLogger):
     def __init__(
         self,
         project_name: str,
+        config: Dict[str, Any],
         sim_fps: int = 5,
     ):
-        wandb.init(project=project_name)
+        wandb.init(project=project_name, config=config)
         self.obs = []
         self.sim_fps = sim_fps
 

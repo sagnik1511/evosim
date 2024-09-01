@@ -30,6 +30,25 @@ AGENT_RUN_DELTA = 0.01
 
 def simulate(trained_agent_path):
 
+    sim_config = {
+        "side_length": ENV_N,
+        "env_channels": CHANNELS_N,
+        "num_actions": ACT_N,
+        "obstacle_percentage": OBSTACLE_PCT,
+        "resource_percentage": RESOURCE_PCT,
+        "waste_move_penalty": WASTE_MOVE_PENALTY,
+        "death_penalty": DEATH_PENALTY,
+        "finish_reward": FINISH_REWARD,
+        "sim_episodes": SIM_EPISODES,
+        "sim_fps": SIM_FPS,
+        "learning_rate": LR,
+        "gamma": GAMMA,
+        "eps_clip": EPS_CLIP,
+        "epoch_k": EPOCH_K,
+        "agent_base_hp": AGENT_HP,
+        "agent_run_delta": AGENT_RUN_DELTA,
+    }
+
     # Loading stored agent
     agent = L1Agent.load(trained_agent_path)
 
@@ -42,7 +61,10 @@ def simulate(trained_agent_path):
         death_penalty=DEATH_PENALTY,
         finish_reward=FINISH_REWARD,
     )
-    wnb_logger = SinglePlayerMapLogger("evosim-sp-sim", sim_fps=SIM_FPS)
+
+    wnb_logger = SinglePlayerMapLogger(
+        "evosim-sp-sim", config=sim_config, sim_fps=SIM_FPS
+    )
 
     # Running sim
     for episode in range(SIM_EPISODES):
@@ -77,6 +99,24 @@ def simulate(trained_agent_path):
 
 def train():
 
+    train_config = {
+        "side_length": ENV_N,
+        "env_channels": CHANNELS_N,
+        "num_actions": ACT_N,
+        "obstacle_percentage": OBSTACLE_PCT,
+        "resource_percentage": RESOURCE_PCT,
+        "waste_move_penalty": WASTE_MOVE_PENALTY,
+        "death_penalty": DEATH_PENALTY,
+        "finish_reward": FINISH_REWARD,
+        "train_episodes": TRAIN_EPISODES,
+        "learning_rate": LR,
+        "gamma": GAMMA,
+        "eps_clip": EPS_CLIP,
+        "epoch_k": EPOCH_K,
+        "agent_base_hp": AGENT_HP,
+        "agent_run_delta": AGENT_RUN_DELTA,
+    }
+
     # Defining objects
     policy = PPO(
         env_side_length=ENV_N,
@@ -97,7 +137,7 @@ def train():
         death_penalty=DEATH_PENALTY,
         finish_reward=FINISH_REWARD,
     )
-    wnb_logger = SinglePlayerMapLogger("evosim-sp-train")
+    wnb_logger = SinglePlayerMapLogger("evosim-sp-train", config=train_config)
 
     for episode in range(TRAIN_EPISODES):
         logger.info(f"Training on episode -> {episode+1}")
@@ -131,5 +171,5 @@ def train():
 
 
 if __name__ == "__main__":
-    simulate("/Users/tensored/evosim/agents/L1Agent.pkl")
-    # train()
+    # simulate("/Users/tensored/evosim/agents/L1Agent.pkl")
+    train()
