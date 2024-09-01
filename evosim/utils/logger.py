@@ -2,7 +2,6 @@ import logging
 
 
 class CustomFormatter(logging.Formatter):
-
     grey = "\x1b[38;20m"
     yellow = "\x1b[33;20m"
     red = "\x1b[31;20m"
@@ -21,22 +20,22 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
+        log_fmt = self.FORMATS.get(record.levelno, self.format)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
 
 
 def get_logger():
-    # Configure the root logger
-    if not logging.getLogger().hasHandlers():
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            datefmt="%s",
-        )  # Default level to DEBUG to ensure all levels are captured
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)  # Set the level to DEBUG for detailed output
-        ch.setFormatter(CustomFormatter())
-        logging.getLogger().addHandler(ch)
+    logger = logging.getLogger()
 
-    return logging.getLogger()
+    # Setting logging level
+    logger.setLevel(logging.INFO)
+
+    # Check if handlers are already added
+    if not logger.handlers:
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        ch.setFormatter(CustomFormatter())
+        logger.addHandler(ch)
+
+    return logger
