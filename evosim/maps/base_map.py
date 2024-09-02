@@ -18,6 +18,17 @@ class BaseMap:
         ]
 
     def _is_pos_free(self, pos: Pos) -> bool:
+        """Checks if position is free or not
+
+        Args:
+            pos (Pos): Corresponding posiiton
+
+        Raises:
+            ValueError: If position is out of bound
+
+        Returns:
+            bool: if the position is empty
+        """
         if pos.x < 0 or pos.x >= self.side_n:
             raise ValueError(f"Cell X position out of bound")
         if pos.y < 0 or pos.y >= self.side_n:

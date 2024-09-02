@@ -53,10 +53,23 @@ class Cell:
         """
         return abs(pos1.x - pos2.x) + abs(pos1.y - pos2.y)
 
-    def _is_free(self):
+    def _is_free(self) -> bool:
+        """Checks if cell is free
+
+        Returns:
+            bool: True if cell is free
+        """
         return not self.c_type
 
     def distance_to(self, new_cell: "Cell") -> int:
+        """Distance between current cell and corresponding cell
+
+        Args:
+            new_cell (Cell): Corresponding Cell
+
+        Returns:
+            int: Distance between the cells
+        """
         curr_cell_pos = self.pos
         new_cell_pos = new_cell.pos
 
@@ -82,7 +95,12 @@ class Cell:
         self.placeholder = object
         setattr(self.placeholder, "pos", self.pos)
 
-    def clear(self):
+    def clear(self) -> Any:
+        """Clears the current cell
+
+        Returns:
+            Any: The placeholder of the cell, None if nothing found
+        """
         place_holder = self.placeholder
         self.c_type = None
         self.placeholder = None

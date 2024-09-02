@@ -17,6 +17,18 @@ MapState = Dict[str, List[List[int]]]
 
 
 class SinglePlayerMap(BaseMap):
+    """SinglePlayerMap is  a single agent map with only baseline objects present.
+
+    The Map starts by putting random resources like Wood and obstacles like Rocks
+    randomly scattered in the Map. The Agent starts from (0,0) location.
+    The Agent can move up-down, left-right if no obstacle found.
+
+    On Each step, agent health detoriates a bit, so that it can reach a death.
+    So, to delay death, it has to consume Wood which gives additional health.
+
+    The goal of the environment/map is to gain all the resources.
+
+    """
 
     def __init__(
         self,
@@ -76,7 +88,7 @@ class SinglePlayerMap(BaseMap):
 
 
         Returns:
-            Dict[List[List]]: Game state in 3 channels
+            MapState: Game state
         """
 
         state_dict: MapState = {
@@ -160,7 +172,7 @@ class SinglePlayerMap(BaseMap):
     def step(self, action: int) -> Tuple[MapState, int, bool, bool]:
         """Env updates upon an action
 
-        Currently there are 5 actions possible
+        Currently there are 4 actions possible
         0 -> move up
             Moves up if there are empty grid or grid with resources are present
         1 -> move down
@@ -255,6 +267,7 @@ class SinglePlayerMap(BaseMap):
 
 
 class SinglePlayerMapLogger(BaseLogger):
+    """SingleMap Player Logger Class"""
 
     def __init__(
         self,
@@ -262,11 +275,20 @@ class SinglePlayerMapLogger(BaseLogger):
         config: Dict[str, Any],
         sim_fps: int = 5,
     ):
+        # Instantiate wandb project
         wandb.init(project=project_name, config=config)
         self.obs = []
         self.sim_fps = sim_fps
 
     def log_step(self, episode: int, state: MapState, agent_hp: float, reward: float):
+        """Logs each Step
+
+        Args:
+            episode (int): Number of the Episode
+            state (MapState): Current Game State
+            agent_hp (float): Agent Health
+            reward (float): Current State Reward
+        """
         # Log states (accumulate states in a list per episode)
         if not hasattr(self, f"episode_{episode}_states"):
             setattr(self, f"episode_{episode}_states", [])
@@ -281,10 +303,26 @@ class SinglePlayerMapLogger(BaseLogger):
         )
 
     @staticmethod
-    def _process_n_resize_states(state, scaled_height, scaled_width):
+    def _process_n_resize_states(
+        state: MapState, scaled_height: int, scaled_width: int
+    ) -> List[np.ndarray]:
+        """Process Game State to visualize
+
+        Args:
+            state (MapState): Current Game State
+            scaled_height (int): Height of the scaled view
+            scaled_width (int): Width of the scaled view
+
+        Returns:
+            List[np.ndarray]: Scaled frame processed
+        """
+
+        # Stacking all info channels
         frame = (
             np.stack([state["Rock"], state["Wood"], state["Agent"]], axis=-1) * 255.0
         )
+
+        # Resizing the frames
         frame = cv2.resize(
             frame, (scaled_height, scaled_width), interpolation=cv2.INTER_NEAREST
         )
@@ -292,14 +330,23 @@ class SinglePlayerMapLogger(BaseLogger):
         return frame
 
     def log_episode(self, episode: int):
+        """Logs Each Episode
+
+        Args:
+            episode (int): Number of the Episode
+        """
+
+        # Fetch Episode states
         states = getattr(self, f"episode_{episode}_states", [])
         if states:
             # Process states into np.ndarray frames
             frames = [
                 self._process_n_resize_states(state, 256, 256) for state in states
             ]
+
+            # Generate a gif file to parse to WandB
             save_episode_gif(frames, "/tmp/evosim/sp-vid.gif")
-            # video = np.array(frames)
+
             wandb.log(
                 {
                     f"Episode_{episode}/sim": wandb.Video(
@@ -307,7 +354,10 @@ class SinglePlayerMapLogger(BaseLogger):
                     )
                 }
             )
+
+            # Free memory as the data is already logged
             delattr(self, f"episode_{episode}_states")
 
     def finish(self):
+        """Close WandB Connection"""
         wandb.finish()

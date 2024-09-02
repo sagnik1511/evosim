@@ -26,6 +26,11 @@ class CustomFormatter(logging.Formatter):
 
 
 def get_logger():
+    """Logger Object Generation
+
+    Returns:
+        _type_: Logger Class
+    """
     logger = logging.getLogger()
 
     # Setting logging level

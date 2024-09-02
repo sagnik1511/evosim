@@ -14,6 +14,7 @@ TT = torch.Tensor
 
 
 class Memory:
+    """Memory Class to store the game progress information"""
 
     def __init__(self):
         self.states = []
@@ -21,13 +22,26 @@ class Memory:
         self.log_probs = []
         self.rewards = []
 
-    def add(self, obs, action, log_probs, reward):
+    def add(self, obs: MapState, action: int, log_probs: torch.Tensor, reward: float):
+        """Update current game state to memory
+
+        Args:
+            obs (MapState): Current Map State
+            action (int): Current Action Taken
+            log_probs (torch.Tensor): Log Probability of the taken action
+            reward (float): Reward recieved through the step taken
+        """
         self.states.append(obs)
         self.actions.append(action)
         self.log_probs.append(log_probs)
         self.rewards.append(reward)
 
     def return_tensor(self) -> Tuple[TT, TT, TT, TT]:
+        """Return memory as tensor data
+
+        Returns:
+            Tuple[TT, TT, TT, TT]: Memory Tensors
+        """
         states = torch.tensor(self.states, dtype=torch.float32)
 
         # Expanding dimension for proper data formatting
@@ -38,10 +52,12 @@ class Memory:
         return states, actions, log_probs, rewards
 
     def clear(self):
+        """Clears the Memory Buffer"""
         self.__init__()
 
 
 class PPOActorCritic(nn.Module):
+    """Actor-Critic neural Network Model to optimize The PPO Policy"""
 
     def __init__(
         self, env_side_length: int = 32, in_channels: int = 3, num_actions: int = 4
@@ -65,7 +81,15 @@ class PPOActorCritic(nn.Module):
         self.policy_layer = nn.Linear(256, num_actions)
         self.value_layer = nn.Linear(256, 1)
 
-    def forward(self, state: TT):
+    def forward(self, state: TT) -> Tuple[TT]:
+        """Generated policy logits and value function
+
+        Args:
+            state (TT): Current Observation State
+
+        Returns:
+            Tuple[TT]: Policy Logits and value Function
+        """
         x = self.fc(self.feature_extractor(state))
         policy_logits = self.policy_layer(x)
         value = self.value_layer(x)
@@ -74,6 +98,7 @@ class PPOActorCritic(nn.Module):
 
 
 class PPO(BasePolicy):
+    """Proximal Policy Optimization Policy"""
 
     def __init__(
         self,
@@ -106,6 +131,14 @@ class PPO(BasePolicy):
         self.learn_counter = learn_counter
 
     def act(self, state: np.ndarray) -> Tuple[TT, TT]:
+        """Take Action over the given state
+
+        Args:
+            state (np.ndarray): Given State
+
+        Returns:
+            Tuple[TT, TT]: Action and the Log Probability of the action
+        """
 
         # Making state as a batch to feed into the nn model
         state = torch.from_numpy(state).unsqueeze(0)
@@ -113,7 +146,7 @@ class PPO(BasePolicy):
         # fetching class probabilities
         logits, _ = self.actor_crtitic(state)
 
-        # Fetching action from
+        # Fetching action from logits
         policy_dist = Categorical(logits=logits)
         action = policy_dist.sample()
         log_probs = policy_dist.log_prob(action)
@@ -121,6 +154,8 @@ class PPO(BasePolicy):
         return action, log_probs
 
     def learn(self) -> None:
+        """Learning Step"""
+
         # Fetch the past responses from the environment
         states, actions, stale_log_probs, rewards = self.memory.return_tensor()
 
@@ -151,9 +186,9 @@ class PPO(BasePolicy):
 
             # Complete Loss formula
             ppo_loss: TT = (
-                torch.min(cpi_surr, clip_surr).mean()
-                + self.vs_factor * F.mse_loss(rewards, values)
-                - self.ent_bonus * entropy
+                -torch.min(cpi_surr, clip_surr).mean()
+                + F.mse_loss(rewards, values) * self.vs_factor
+                - entropy * self.ent_bonus
             )
 
             # Update gradients and optimize the weights
@@ -161,6 +196,14 @@ class PPO(BasePolicy):
             self.optimizer.step()
 
     def observe(self, state: MapState, action: int, log_probs, reward: int) -> None:
+        """Load memory and learn if needed
+
+        Args:
+            state (MapState): Current Observation State
+            action (int): Current Action
+            log_probs (_type_): Action Log Probability
+            reward (int): Reward of the Current Step
+        """
 
         # Update counters and memory buffers
         self.obs_counter += 1
