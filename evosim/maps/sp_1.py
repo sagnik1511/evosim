@@ -280,11 +280,14 @@ class SinglePlayerMapLogger(BaseLogger):
         self.obs = []
         self.sim_fps = sim_fps
 
-    def log_step(self, episode: int, state: MapState, agent_hp: float, reward: float):
+    def log_step(
+        self, episode: int, step: int, state: MapState, agent_hp: float, reward: float
+    ):
         """Logs each Step
 
         Args:
             episode (int): Number of the Episode
+            step (int): Current Step NUmber
             state (MapState): Current Game State
             agent_hp (float): Agent Health
             reward (float): Current State Reward
@@ -299,6 +302,7 @@ class SinglePlayerMapLogger(BaseLogger):
             {
                 f"Episode_{episode}/reward": reward,
                 f"Episode_{episode}/agent_health": agent_hp,
+                f"Episode_{episode}/step": step,
             }
         )
 
@@ -329,7 +333,7 @@ class SinglePlayerMapLogger(BaseLogger):
 
         return frame
 
-    def log_episode(self, episode: int):
+    def log_episode(self, episode: int, num_steps: int, reward: float):
         """Logs Each Episode
 
         Args:
@@ -349,9 +353,11 @@ class SinglePlayerMapLogger(BaseLogger):
 
             wandb.log(
                 {
+                    f"Total Steps": num_steps,
+                    f"Reward": reward,
                     f"Episode_{episode}/sim": wandb.Video(
                         "/tmp/evosim/sp-vid.gif", fps=self.sim_fps, format="mp4"
-                    )
+                    ),
                 }
             )
 

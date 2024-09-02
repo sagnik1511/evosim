@@ -86,7 +86,9 @@ def train():
 
             # fetch next state after performing action
             obs, reward, terminated, truncated = env.step(action)
-            wnb_logger.log_step(episode, obs, agent.hp, total_reward)
+            wnb_logger.log_step(
+                episode, total_setps_traversed, obs, agent.hp, total_reward
+            )
 
             # Accumulating episode reward
             total_reward += reward
@@ -97,7 +99,7 @@ def train():
         logger.info(
             f"Episode[{episode+1}] Total Steps -> {total_setps_traversed} Total Reward -> {total_reward}"
         )
-        wnb_logger.log_episode(episode)
+        wnb_logger.log_episode(episode, total_setps_traversed, total_reward)
 
     # Save the updated agent
     agent.save()

@@ -82,7 +82,9 @@ def simulate(trained_agent_path):
 
             # fetch next state after performing action
             obs, reward, terminated, truncated = env.step(action)
-            wnb_logger.log_step(episode, obs, agent.hp, total_reward)
+            wnb_logger.log_step(
+                episode, total_setps_traversed, obs, agent.hp, total_reward
+            )
 
             # Accumulating episode reward
             total_reward += reward
