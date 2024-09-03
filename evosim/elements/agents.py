@@ -86,17 +86,33 @@ class L1Agent(Agent):
         self.hp = hp
         self.__start_hp = hp
         self.run_delta = run_delta
+        self.policy_name = self.policy.__class__.__name__
 
     def act(self, state: MapState):
         obs = np.stack([state["Rock"], state["Wood"], state["Agent"]], axis=0).astype(
             np.float32
         )
-        action, probs = self.policy.act(obs)
-        return action.item(), probs
+        if self.policy_name == "PPO":
+            action, probs = self.policy.act(obs)
+            return action.item(), probs
+        elif self.policy_name == "DDQN":
+            return self.policy.act(obs)
 
-    def observe(self, obs, action, log_probs, reward):
+    def observe(
+        self,
+        obs,
+        action,
+        reward,
+        log_probs=None,
+        state_=None,
+        done=None,
+    ):
         obs = np.stack([obs["Rock"], obs["Wood"], obs["Agent"]], axis=0)
-        self.policy.observe(obs, action, log_probs, reward)
+        if self.policy_name == "PPO":
+            self.policy.observe(obs, action, log_probs, reward)
+        elif self.policy_name == "DDQN":
+            obs_ = np.stack([state_["Rock"], state_["Wood"], state_["Agent"]], axis=0)
+            self.policy.observe(obs, action, reward, obs_, done)
 
     def __str__(self):
         return f"L1Agent({self.pos})"
