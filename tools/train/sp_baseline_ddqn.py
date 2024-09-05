@@ -7,7 +7,7 @@ logger = get_logger()
 
 # Constants
 # Environment Constants
-POLICY = "PPO"
+POLICY = "DDQN"
 ENV_N = 32
 CHANNELS_N = 3
 ACT_N = 4
@@ -21,9 +21,9 @@ TRAIN_EPISODES = 1
 # Agent Constant
 LR = 1e-4
 GAMMA = 0.95
-EPS = 0.95
-EPS_MIN = 0.5
-EPS_DEACY = 4e-5
+EPS = 0.99
+EPS_MIN = 0.1
+EPS_DEACY = 0.9999
 BUFFER_SIZE = 1000000
 BATCH_SIZE = 32
 AGENT_HP = 2

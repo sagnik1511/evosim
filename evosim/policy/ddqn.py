@@ -1,6 +1,6 @@
 import random
 from collections import deque
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List
 
 import numpy as np
 import torch
