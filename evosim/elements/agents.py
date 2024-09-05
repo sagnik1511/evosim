@@ -93,8 +93,8 @@ class L1Agent(Agent):
             np.float32
         )
         if self.policy_name == "PPO":
-            action, probs = self.policy.act(obs)
-            return action.item(), probs
+            action, probs, value = self.policy.act(obs)
+            return action.item(), probs, value.item()
         elif self.policy_name == "DDQN":
             return self.policy.act(obs)
 
@@ -104,12 +104,13 @@ class L1Agent(Agent):
         action,
         reward,
         log_probs=None,
+        value=None,
         state_=None,
         done=None,
     ):
         obs = np.stack([obs["Rock"], obs["Wood"], obs["Agent"]], axis=0)
         if self.policy_name == "PPO":
-            self.policy.observe(obs, action, log_probs, reward)
+            self.policy.observe(obs, action, log_probs, reward, value)
         elif self.policy_name == "DDQN":
             obs_ = np.stack([state_["Rock"], state_["Wood"], state_["Agent"]], axis=0)
             self.policy.observe(obs, action, reward, obs_, done)

@@ -90,6 +90,7 @@ def train():
         total_reward = 0
         total_setps_traversed = 0
         obs, terminated, truncated = env.reset()
+        wnb_logger.log_step(episode, total_setps_traversed, obs, agent.hp, total_reward)
 
         # Interact and through the env until it is terminated
         while not terminated and not truncated:
@@ -100,15 +101,19 @@ def train():
 
             # fetch next state after performing action
             obs_, reward, terminated, truncated = env.step(action)
-            wnb_logger.log_step(
-                episode, total_setps_traversed, obs, agent.hp, total_reward
-            )
 
             # Accumulating episode reward
             total_reward += reward
 
             # Learn over the steps
             agent.observe(obs, action, reward, state_=obs_, done=terminated)
+
+            # Update the prev state as the current state
+            obs = obs_
+
+            wnb_logger.log_step(
+                episode, total_setps_traversed, obs, agent.hp, total_reward
+            )
 
         logger.info(
             f"Episode[{episode+1}] Total Steps -> {total_setps_traversed} Total Reward -> {total_reward}"

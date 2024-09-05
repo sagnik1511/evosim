@@ -16,7 +16,7 @@ RESOURCE_PCT = 0.2
 WASTE_MOVE_PENALTY = 0.01
 DEATH_PENALTY = 1
 FINISH_REWARD = 2
-TRAIN_EPISODES = 1
+TRAIN_EPISODES = 3
 
 # Agent Constant
 LR = 1e-4
@@ -84,7 +84,7 @@ def train():
             total_setps_traversed += 1
 
             # Act afte observing current state
-            action, log_probs = agent.act(obs)
+            action, log_probs, value = agent.act(obs)
 
             # fetch next state after performing action
             obs, reward, terminated, truncated = env.step(action)
@@ -96,7 +96,7 @@ def train():
             total_reward += reward
 
             # Learn over the steps
-            agent.observe(obs, action, reward, log_probs=log_probs)
+            agent.observe(obs, action, reward, log_probs=log_probs, value=value)
 
         logger.info(
             f"Episode[{episode+1}] Total Steps -> {total_setps_traversed} Total Reward -> {total_reward}"

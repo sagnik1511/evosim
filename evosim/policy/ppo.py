@@ -21,8 +21,16 @@ class Memory:
         self.actions = []
         self.log_probs = []
         self.rewards = []
+        self.values = []
 
-    def add(self, obs: MapState, action: int, log_probs: torch.Tensor, reward: float):
+    def add(
+        self,
+        obs: MapState,
+        action: int,
+        log_probs: torch.Tensor,
+        reward: float,
+        value: float,
+    ):
         """Update current game state to memory
 
         Args:
@@ -35,8 +43,9 @@ class Memory:
         self.actions.append(action)
         self.log_probs.append(log_probs)
         self.rewards.append(reward)
+        self.values.append(value)
 
-    def return_tensor(self) -> Tuple[TT, TT, TT, TT]:
+    def return_tensor(self) -> Tuple[TT, TT, TT, TT, TT]:
         """Return memory as tensor data
 
         Returns:
@@ -48,8 +57,9 @@ class Memory:
         actions = torch.tensor(self.actions, dtype=torch.float32).unsqueeze(1)
         log_probs = torch.tensor(self.log_probs, dtype=torch.float32).unsqueeze(1)
         rewards = torch.tensor(self.rewards, dtype=torch.float32).unsqueeze(1)
+        values = torch.tensor(self.values, dtype=torch.float32).unsqueeze(1)
 
-        return states, actions, log_probs, rewards
+        return states, actions, log_probs, rewards, values
 
     def clear(self):
         """Clears the Memory Buffer"""
@@ -130,34 +140,54 @@ class PPO(BasePolicy):
         self.obs_counter = 0
         self.learn_counter = learn_counter
 
-    def act(self, state: np.ndarray) -> Tuple[TT, TT]:
+    def act(self, state: np.ndarray) -> Tuple[TT, TT, TT]:
         """Take Action over the given state
 
         Args:
             state (np.ndarray): Given State
 
         Returns:
-            Tuple[TT, TT]: Action and the Log Probability of the action
+            Tuple[TT, TT, TT]: Action, the Log Probability and Value of the action
         """
 
         # Making state as a batch to feed into the nn model
         state = torch.from_numpy(state).unsqueeze(0)
 
         # fetching class probabilities
-        logits, _ = self.actor_crtitic(state)
+        logits, value = self.actor_crtitic(state)
 
         # Fetching action from logits
         policy_dist = Categorical(logits=logits)
         action = policy_dist.sample()
         log_probs = policy_dist.log_prob(action)
 
-        return action, log_probs
+        return action, log_probs, value
+
+    def _fetch_gae(self, rewards: TT, values: TT) -> TT:
+
+        rewards = rewards.squeeze(1).detach().numpy().tolist()
+        values = values.squeeze(1).detach().numpy().tolist()
+
+        next_value = values[-1]
+
+        advantages = []
+        advantage = 0
+        for r, v in zip(reversed(rewards), reversed(values)):
+            td_error = r + self.gamma * next_value - v
+            advantage = td_error + self.gamma * advantage
+            advantages.insert(0, advantage)
+            next_value = v
+
+        return torch.tensor(advantages).unsqueeze(0)
 
     def learn(self) -> None:
         """Learning Step"""
 
         # Fetch the past responses from the environment
-        states, actions, stale_log_probs, rewards = self.memory.return_tensor()
+        states, actions, stale_log_probs, rewards, values = self.memory.return_tensor()
+        stale_log_probs = stale_log_probs.detach()
+        returns = rewards + values
+        advantages = self._fetch_gae(rewards, values)
 
         # Training for K_EPOCHS
         for epoch in range(self.k_epochs):
@@ -175,9 +205,6 @@ class PPO(BasePolicy):
             # Calculate objective fn ratio
             ratios = torch.exp(new_log_probs - stale_log_probs)
 
-            # Calculate advantages keeping in mind value gradients aren't affected
-            advantages = rewards - values.detach()
-
             # Calculating surrogate fns
             cpi_surr = ratios * advantages
             clip_surr = (
@@ -187,7 +214,7 @@ class PPO(BasePolicy):
             # Complete Loss formula
             ppo_loss: TT = (
                 -torch.min(cpi_surr, clip_surr).mean()
-                + F.mse_loss(rewards, values) * self.vs_factor
+                + F.mse_loss(values, returns) * self.vs_factor
                 - entropy * self.ent_bonus
             )
 
@@ -195,7 +222,9 @@ class PPO(BasePolicy):
             ppo_loss.backward()
             self.optimizer.step()
 
-    def observe(self, state: MapState, action: int, log_probs, reward: int) -> None:
+    def observe(
+        self, state: MapState, action: int, log_probs, reward: int, value: float
+    ) -> None:
         """Load memory and learn if needed
 
         Args:
@@ -207,7 +236,7 @@ class PPO(BasePolicy):
 
         # Update counters and memory buffers
         self.obs_counter += 1
-        self.memory.add(state, action, log_probs, reward)
+        self.memory.add(state, action, log_probs, reward, value)
 
         if self.obs_counter % self.learn_counter == self.learn_counter - 1:
 

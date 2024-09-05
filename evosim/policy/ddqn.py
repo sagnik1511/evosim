@@ -75,7 +75,7 @@ class DDQN(BasePolicy):
         env_actions: int = 4,
         gamma: float = 0.9,
         eps: float = 0.999,
-        eps_decay: float = 4e-5,
+        eps_decay: float = 0.999,
         eps_min: float = 0.1,
         lr: float = 3e-4,
         buffer_size: int = 100000,
@@ -97,7 +97,7 @@ class DDQN(BasePolicy):
     def act(self, state: np.ndarray) -> int:
 
         # Update Epsilon (Epsilo Annealing)
-        self.eps = max(self.eps_min, self.eps - self.eps_decay)
+        self.eps = max(self.eps_min, self.eps * self.eps_decay)
 
         act_prob = random.random()
 
