@@ -92,7 +92,6 @@ class PPOActorCritic(nn.Module):
         self.fc = nn.Linear((self.hidden_dim // 2) * (self.input_dim // 4) ** 2, 256)
         self.policy_layer = nn.Linear(256, num_actions)
         self.value_layer = nn.Linear(256, 1)
-        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, state: TT) -> Tuple[TT]:
         """Generated policy logits and value function
@@ -104,7 +103,7 @@ class PPOActorCritic(nn.Module):
             Tuple[TT]: Policy Logits and value Function
         """
         x = self.fc(self.feature_extractor(state))
-        policy_logits = self.softmax(self.policy_layer(x))
+        policy_logits = self.policy_layer(x)
         value = self.value_layer(x)
 
         return policy_logits, value
