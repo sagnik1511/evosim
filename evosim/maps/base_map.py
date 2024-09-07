@@ -33,9 +33,9 @@ class BaseMap:
             bool: if the position is empty
         """
         if pos.x < 0 or pos.x >= self.side_n:
-            raise ValueError("Cell X position out of bound")
+            raise IndexError("Cell X position out of bound")
         if pos.y < 0 or pos.y >= self.side_n:
-            raise ValueError("Cell Y position out of bound")
+            raise IndexError("Cell Y position out of bound")
 
         return self.__struct[pos.x][pos.y]._is_free()
 
@@ -69,9 +69,9 @@ class BaseMap:
             Cell: Fetches the corresponding cell
         """
         if pos.x < 0 or pos.x >= self.side_n:
-            raise ValueError("Cell X position out of bound")
+            raise IndexError("Cell X position out of bound")
         if pos.y < 0 or pos.y >= self.side_n:
-            raise ValueError("Cell Y position out of bound")
+            raise IndexError("Cell Y position out of bound")
 
         return self.__struct[pos.x][pos.y]
 

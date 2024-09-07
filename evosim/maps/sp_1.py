@@ -222,8 +222,7 @@ class SinglePlayerMap(BaseMap):
                 # fetch the corresponding cell
                 cell = self.fetch_cell(next_pos)
 
-            except Exception as e:
-                logger.warn(e)
+            except IndexError:
                 # If the position isn't valid, skip the step
                 logger.warning("Not possible to move to %s. Wasted Step", next_pos)
                 reward -= self.wasted_pn
