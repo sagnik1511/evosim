@@ -1,3 +1,5 @@
+"""PPO Training Job"""
+
 from evosim.elements.agents import L1Agent
 from evosim.maps.sp_1 import SinglePlayerMap, SinglePlayerMapLogger
 from evosim.policy import PPO
@@ -12,7 +14,7 @@ ENV_N = 32
 CHANNELS_N = 3
 ACT_N = 4
 OBSTACLE_PCT = 0.1
-RESOURCE_PCT = 0.2
+RESOURCE_PCT = 0.15
 WASTE_MOVE_PENALTY = 0.01
 DEATH_PENALTY = 1
 FINISH_REWARD = 2
@@ -20,11 +22,11 @@ TRAIN_EPISODES = 50
 
 # Agent Constant
 LR = 1e-4
-GAMMA = 0.99
+GAMMA = 0.95
 EPS_CLIP = 0.2
 EPOCH_K = 50
-AGENT_HP = 2
-AGENT_RUN_DELTA = 0.01
+AGENT_HP = 3
+AGENT_RUN_DELTA = 0.02
 
 
 def train():
@@ -72,7 +74,7 @@ def train():
 
     # Train over Episodes
     for episode in range(TRAIN_EPISODES):
-        logger.info(f"Training on episode -> {episode+1}")
+        logger.info("Training on episode -> %s", episode + 1)
 
         # Initialize total reward
         total_reward = 0
@@ -99,7 +101,10 @@ def train():
             agent.observe(obs, action, reward, log_probs=log_probs, value=value)
 
         logger.info(
-            f"Episode[{episode+1}] Total Steps -> {total_setps_traversed} Total Reward -> {total_reward}"
+            "Episode[%s] Total Steps -> %s Total Reward -> %s",
+            episode + 1,
+            total_setps_traversed,
+            total_reward,
         )
         wnb_logger.log_episode(episode, total_setps_traversed, total_reward)
 

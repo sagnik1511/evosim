@@ -1,3 +1,5 @@
+"""Base Map Class"""
+
 from abc import abstractmethod
 from typing import Any, Dict, List
 
@@ -5,6 +7,7 @@ from evosim.maps.cells import Cell, Pos
 
 
 class BaseMap:
+    """Base Class of Maps"""
 
     def __init__(self, side_length):
         self.side_n = side_length
@@ -30,9 +33,9 @@ class BaseMap:
             bool: if the position is empty
         """
         if pos.x < 0 or pos.x >= self.side_n:
-            raise ValueError(f"Cell X position out of bound")
+            raise ValueError("Cell X position out of bound")
         if pos.y < 0 or pos.y >= self.side_n:
-            raise ValueError(f"Cell Y position out of bound")
+            raise ValueError("Cell Y position out of bound")
 
         return self.__struct[pos.x][pos.y]._is_free()
 
@@ -66,9 +69,9 @@ class BaseMap:
             Cell: Fetches the corresponding cell
         """
         if pos.x < 0 or pos.x >= self.side_n:
-            raise ValueError(f"Cell X position out of bound")
+            raise ValueError("Cell X position out of bound")
         if pos.y < 0 or pos.y >= self.side_n:
-            raise ValueError(f"Cell Y position out of bound")
+            raise ValueError("Cell Y position out of bound")
 
         return self.__struct[pos.x][pos.y]
 
@@ -78,10 +81,6 @@ class BaseMap:
 
     @abstractmethod
     def _get_current_state(self):
-        pass
-
-    @abstractmethod
-    def log_observation(self):
         pass
 
 

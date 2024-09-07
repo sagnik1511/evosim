@@ -26,6 +26,7 @@ class Pos:
 
 
 class Cell:
+    """Cells are single block space in an environment"""
 
     def __init__(self, pos: Pos):
         self.pos = pos
@@ -35,8 +36,7 @@ class Cell:
     def __str__(self):
         if not self.placeholder:
             return f"Cell({self.pos})"
-        else:
-            return str(self.placeholder)
+        return str(self.placeholder)
 
     @staticmethod
     def _manhattan_distance(pos1: Pos, pos2: Pos) -> int:
@@ -75,7 +75,7 @@ class Cell:
 
         return self._manhattan_distance(curr_cell_pos, new_cell_pos)
 
-    def assign(self, object: Any, exists_ok: bool = False):
+    def assign(self, placeholder: Any, exists_ok: bool = False):
         """Assign an object to a cell
 
         Args:
@@ -91,8 +91,8 @@ class Cell:
             else:
                 raise ValueError(f"Position : {self.pos} is already occupied")
 
-        self.c_type = object.__class__.__name__
-        self.placeholder = object
+        self.c_type = placeholder.__class__.__name__
+        self.placeholder = placeholder
         setattr(self.placeholder, "pos", self.pos)
 
     def clear(self) -> Any:

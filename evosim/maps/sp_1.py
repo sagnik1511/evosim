@@ -1,3 +1,5 @@
+"""Single Player Baseline Map"""
+
 import random
 from typing import Any, Dict, List, Tuple
 
@@ -73,7 +75,7 @@ class SinglePlayerMap(BaseMap):
                     elif el_probs <= self.obs_pct + self.res_pct:
                         obj = resources.Wood(Pos(idx, idy))
                         cell.assign(obj)
-        logger.info(f"Elements have been assigned to cells")
+        logger.info("Elements have been assigned to cells")
 
     def _get_current_state(self) -> MapState:
         """Retrieve current game state
@@ -136,6 +138,15 @@ class SinglePlayerMap(BaseMap):
         # Moving object to new cell
         cell2 = self.fetch_cell(pos2)
         cell2.assign(cell_object, exists_ok)
+
+    def _grow_resources(self) -> None:
+        """Update resources"""
+        for idx in range(self.side_n):
+            for idy in range(self.side_n):
+                cell = self.fetch_cell(Pos(idx, idy))
+                obj_type = cell.placeholder.__class__.__name__
+                if obj_type in ["Wood"]:
+                    cell.placeholder.grow()
 
     def sample(self) -> int:
         """Sample Random action
@@ -211,24 +222,26 @@ class SinglePlayerMap(BaseMap):
                 # fetch the corresponding cell
                 cell = self.fetch_cell(next_pos)
 
-            except:
+            except Exception as e:
+                logger.warn(e)
                 # If the position isn't valid, skip the step
-                logger.warning(f"Not possible to move to {next_pos}. Wasted Step")
+                logger.warning("Not possible to move to %s. Wasted Step", next_pos)
                 reward -= self.wasted_pn
                 return self._get_current_state(), reward, terminated, truncated
 
             # Checking if the cell is free to move the agent
             if self._is_pos_free(next_pos):
 
-                logger.info(f"Agent is moved from {agent_pos} to {next_pos}")
+                logger.info("Agent is moved from %s to %s", agent_pos, next_pos)
                 # Moved the agent to blank cell
                 self._move_object(agent_pos, next_pos)
                 agent_pos = next_pos
+                reward -= self.wasted_pn / 5
             else:
 
                 # Checking is resources are in the cell
                 if cell.c_type != "Wood":
-                    logger.warning(f"Not possible to move to {cell}. Wasted Step")
+                    logger.warning("Not possible to move to %s. Wasted Step", cell)
                     reward = -self.wasted_pn
                 else:
                     # Transfer resource energy to agent
@@ -236,24 +249,26 @@ class SinglePlayerMap(BaseMap):
                     reward += cell.placeholder.hp
 
                     # Moved the agent after consuming next_pos resources
-                    self._move_object(agent_pos, next_pos, True)
-                    agent_pos = next_pos
                     logger.info(
-                        f"Agent is moved from {agent_pos} to {next_pos} after consuming wood"
+                        "Agent is moved from %s to %s after consuming wood",
+                        agent_pos,
+                        next_pos,
                     )
+                    self._move_object(agent_pos, next_pos, True)
         else:
             raise ValueError(f"Action={action} not defined")
 
         # Agent using effort
         self.agent.run()
+        self._grow_resources()
 
         # Removing dead agent
         if self.agent.hp <= 0:
             cell = self.fetch_cell(agent_pos)
             cell.clear()
             truncated = True
-            reward = -self.death_pn
-            logger.warning(f"Agent has died on {cell.pos}")
+            reward -= self.death_pn
+            logger.warning("Agent has died on %s", cell.pos)
 
         # Fetch current state
         curr_game_state = self._get_current_state()
@@ -275,6 +290,7 @@ class SinglePlayerMapLogger(BaseLogger):
         config: Dict[str, Any],
         sim_fps: int = 5,
     ):
+        super().__init__(self)
         # Instantiate wandb project
         wandb.init(project=project_name, config=config)
         self.obs = []
@@ -353,8 +369,8 @@ class SinglePlayerMapLogger(BaseLogger):
 
             wandb.log(
                 {
-                    f"Total Steps": num_steps,
-                    f"Reward": reward,
+                    "Total Steps": num_steps,
+                    "Reward": reward,
                     f"Episode_{episode}/sim": wandb.Video(
                         "/tmp/evosim/sp-vid.gif", fps=self.sim_fps, format="mp4"
                     ),

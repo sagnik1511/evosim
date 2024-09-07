@@ -1,3 +1,5 @@
+"""PPO Policy Implementation"""
+
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
@@ -90,6 +92,7 @@ class PPOActorCritic(nn.Module):
         self.fc = nn.Linear((self.hidden_dim // 2) * (self.input_dim // 4) ** 2, 256)
         self.policy_layer = nn.Linear(256, num_actions)
         self.value_layer = nn.Linear(256, 1)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, state: TT) -> Tuple[TT]:
         """Generated policy logits and value function
@@ -101,7 +104,7 @@ class PPOActorCritic(nn.Module):
             Tuple[TT]: Policy Logits and value Function
         """
         x = self.fc(self.feature_extractor(state))
-        policy_logits = self.policy_layer(x)
+        policy_logits = self.softmax(self.policy_layer(x))
         value = self.value_layer(x)
 
         return policy_logits, value
@@ -164,7 +167,15 @@ class PPO(BasePolicy):
         return action, log_probs, value
 
     def _fetch_gae(self, rewards: TT, values: TT) -> TT:
+        """Calculates General Advantage Estimate
 
+        Args:
+            rewards (TT): Rewards of the previous steps
+            values (TT): Value Function Output of previous steps
+
+        Returns:
+            TT: GAE of the Pevious Steps
+        """
         rewards = rewards.squeeze(1).detach().numpy().tolist()
         values = values.squeeze(1).detach().numpy().tolist()
 
@@ -186,7 +197,7 @@ class PPO(BasePolicy):
         # Fetch the past responses from the environment
         states, actions, stale_log_probs, rewards, values = self.memory.return_tensor()
         stale_log_probs = stale_log_probs.detach()
-        returns = rewards + values
+        returns = rewards + values.detach()
         advantages = self._fetch_gae(rewards, values)
 
         # Training for K_EPOCHS
@@ -211,7 +222,7 @@ class PPO(BasePolicy):
                 torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
             )
 
-            # Complete Loss formula
+            # Complete Loss Formula
             ppo_loss: TT = (
                 -torch.min(cpi_surr, clip_surr).mean()
                 + F.mse_loss(values, returns) * self.vs_factor
