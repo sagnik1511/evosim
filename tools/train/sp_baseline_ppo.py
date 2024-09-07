@@ -1,5 +1,8 @@
 """PPO Training Job"""
 
+from configparser import ConfigParser
+from typing import Any, Dict
+
 from evosim.elements.agents import L1Agent
 from evosim.maps.sp_1 import SinglePlayerMap, SinglePlayerMapLogger
 from evosim.policy import PPO
@@ -7,73 +10,79 @@ from evosim.utils.logger import get_logger
 
 logger = get_logger()
 
-# Constants
-# Environment Constants
-POLICY = "PPO"
-ENV_N = 32
-CHANNELS_N = 3
-ACT_N = 4
-OBSTACLE_PCT = 0.1
-RESOURCE_PCT = 0.15
-WASTE_MOVE_PENALTY = 0.01
-DEATH_PENALTY = 1
-FINISH_REWARD = 2
-TRAIN_EPISODES = 50
 
-# Agent Constant
-LR = 1e-4
-GAMMA = 0.95
-EPS_CLIP = 0.2
-EPOCH_K = 50
-AGENT_HP = 3
-AGENT_RUN_DELTA = 0.02
+def load_config(job_name: str) -> Dict[str, Any]:
+    """Load configuration for training
+
+    Args:
+        job_name (str): Name of the Job
+
+    Returns:
+        Dict[str, Any]: Job Config
+    """
+
+    parser = ConfigParser()
+    parser.read("config.ini")
+
+    job = parser[job_name]
+
+    train_config = {
+        "policy_name": job["POLICY"],
+        "side_length": int(job["ENV_N"]),
+        "env_channels": int(job["CHANNELS_N"]),
+        "num_actions": int(job["ACT_N"]),
+        "obstacle_percentage": float(job["OBSTACLE_PCT"]),
+        "resource_percentage": float(job["RESOURCE_PCT"]),
+        "waste_move_penalty": float(job["WASTE_MOVE_PENALTY"]),
+        "death_penalty": float(job["DEATH_PENALTY"]),
+        "finish_reward": float(job["FINISH_REWARD"]),
+        "train_episodes": int(job["TRAIN_EPISODES"]),
+        "learning_rate": float(job["LR"]),
+        "gamma": float(job["GAMMA"]),
+        "eps_clip": float(job["EPS_CLIP"]),
+        "epoch_k": int(job["EPOCH_K"]),
+        "agent_base_hp": int(job["AGENT_HP"]),
+        "agent_run_delta": float(job["AGENT_RUN_DELTA"]),
+    }
+
+    return train_config
 
 
 def train():
-    """Train over Simulation with Given Policy"""
-    train_config = {
-        "policy_name": POLICY,
-        "side_length": ENV_N,
-        "env_channels": CHANNELS_N,
-        "num_actions": ACT_N,
-        "obstacle_percentage": OBSTACLE_PCT,
-        "resource_percentage": RESOURCE_PCT,
-        "waste_move_penalty": WASTE_MOVE_PENALTY,
-        "death_penalty": DEATH_PENALTY,
-        "finish_reward": FINISH_REWARD,
-        "train_episodes": TRAIN_EPISODES,
-        "learning_rate": LR,
-        "gamma": GAMMA,
-        "eps_clip": EPS_CLIP,
-        "epoch_k": EPOCH_K,
-        "agent_base_hp": AGENT_HP,
-        "agent_run_delta": AGENT_RUN_DELTA,
-    }
+    """Train over Simulation with PPO Policy"""
+
+    # Update your job name here
+    job_name = "PPO_Baseline"
+
+    config = load_config(job_name)
+    logger.info(config)
 
     # Defining objects
     policy = PPO(
-        env_side_length=ENV_N,
-        env_channels=CHANNELS_N,
-        env_actions=ACT_N,
-        lr=LR,
-        gamma=GAMMA,
-        eps_clip=EPS_CLIP,
-        k_epochs=EPOCH_K,
+        env_side_length=config["side_length"],
+        env_channels=config["env_channels"],
+        env_actions=config["num_actions"],
+        lr=config["learning_rate"],
+        gamma=config["gamma"],
+        eps_clip=config["eps_clip"],
+        k_epochs=config["epoch_k"],
     )
-    agent = L1Agent(policy, hp=AGENT_HP, run_delta=AGENT_RUN_DELTA)
+    agent = L1Agent(
+        policy, hp=config["agent_base_hp"], run_delta=config["agent_run_delta"]
+    )
     env = SinglePlayerMap(
         agent,
-        side_length=ENV_N,
-        obstacle_percent=OBSTACLE_PCT,
-        resource_percent=RESOURCE_PCT,
-        waste_move_penalty=WASTE_MOVE_PENALTY,
-        death_penalty=DEATH_PENALTY,
-        finish_reward=FINISH_REWARD,
+        side_length=config["side_length"],
+        obstacle_percent=config["obstacle_percentage"],
+        resource_percent=config["resource_percentage"],
+        waste_move_penalty=config["waste_move_penalty"],
+        death_penalty=config["death_penalty"],
+        finish_reward=config["finish_reward"],
     )
-    wnb_logger = SinglePlayerMapLogger("evosim-sp-train", config=train_config)
+    wnb_logger = SinglePlayerMapLogger("evosim-sp-train", config=config)
 
     # Train over Episodes
-    for episode in range(TRAIN_EPISODES):
+    for episode in range(config["train_episodes"]):
         logger.info("Training on episode -> %s", episode + 1)
 
         # Initialize total reward

@@ -3,7 +3,6 @@ from typing import Any, Dict
 
 from evosim.elements.agents import L1Agent
 from evosim.maps.sp_1 import SinglePlayerMap, SinglePlayerMapLogger
-from evosim.policy import DDQN
 from evosim.utils.logger import get_logger
 
 logger = get_logger()
@@ -34,7 +33,8 @@ def load_config(job_name: str) -> Dict[str, Any]:
         "waste_move_penalty": float(job["WASTE_MOVE_PENALTY"]),
         "death_penalty": float(job["DEATH_PENALTY"]),
         "finish_reward": float(job["FINISH_REWARD"]),
-        "train_episodes": int(job["TRAIN_EPISODES"]),
+        "sim_episodes": int(job["SIM_EPISODES"]),
+        "sim_fps": int(job["SIM_FPS"]),
         "learning_rate": float(job["LR"]),
         "gamma": float(job["GAMMA"]),
         "eps": float(job["EPS"]),
@@ -50,8 +50,8 @@ def load_config(job_name: str) -> Dict[str, Any]:
     return train_config
 
 
-def train():
-    """Train over Simulation with DDQN Policy"""
+def simulate(trained_agent_path):
+    """Run simuation over saved Agent"""
 
     # Update your job name here
     job_name = "DDQN_Baseline"
@@ -59,23 +59,9 @@ def train():
     config = load_config(job_name)
     logger.info(config)
 
-    # Defining objects
-    policy = DDQN(
-        env_side_length=config["side_length"],
-        env_channels=config["env_channels"],
-        env_actions=config["env_channels"],
-        gamma=config["gamma"],
-        eps=config["eps"],
-        eps_decay=config["eps_decay"],
-        eps_min=config["eps_min"],
-        lr=config["learning_rate"],
-        buffer_size=config["buffer_size"],
-        batch_size=config["batch_size"],
-        learn_counter=config["agent_learn_counter"],
-    )
-    agent = L1Agent(
-        policy, hp=config["agent_base_hp"], run_delta=config["agent_run_delta"]
-    )
+    # Loading stored agent
+    agent = L1Agent.load(trained_agent_path)
+
     env = SinglePlayerMap(
         agent,
         side_length=config["side_length"],
@@ -85,17 +71,19 @@ def train():
         death_penalty=config["death_penalty"],
         finish_reward=config["finish_reward"],
     )
-    wnb_logger = SinglePlayerMapLogger("evosim-sp-train", config=config)
 
-    # Train over Episodes
-    for episode in range(config["train_episodes"]):
-        logger.info("Training on episode -> %s", episode + 1)
+    wnb_logger = SinglePlayerMapLogger(
+        "evosim-sp-sim", config=config, sim_fps=config["sim_fps"]
+    )
+
+    # Running sim
+    for episode in range(config["sim_episodes"]):
+        logger.info("Simulating on episode -> %s", episode + 1)
 
         # Initialize total reward
         total_reward = 0
         total_setps_traversed = 0
         obs, terminated, truncated = env.reset()
-        wnb_logger.log_step(episode, total_setps_traversed, obs, agent.hp, total_reward)
 
         # Interact and through the env until it is terminated
         while not terminated and not truncated:
@@ -105,20 +93,13 @@ def train():
             action = agent.act(obs)
 
             # fetch next state after performing action
-            obs_, reward, terminated, truncated = env.step(action)
-
-            # Accumulating episode reward
-            total_reward += reward
-
-            # Learn over the steps
-            agent.observe(obs, action, reward, state_=obs_, done=terminated)
-
-            # Update the prev state as the current state
-            obs = obs_
-
+            obs, reward, terminated, truncated = env.step(action)
             wnb_logger.log_step(
                 episode, total_setps_traversed, obs, agent.hp, total_reward
             )
+
+            # Accumulating episode reward
+            total_reward += reward
 
         logger.info(
             "Episode[%s] Total Steps -> %s Total Reward -> %s",
@@ -128,10 +109,8 @@ def train():
         )
         wnb_logger.log_episode(episode, total_setps_traversed, total_reward)
 
-    # Save the updated agent
-    agent.save()
     wnb_logger.finish()
 
 
 if __name__ == "__main__":
-    train()
+    simulate("/Users/tensored/evosim/agents/L1Agent.pkl")

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from evosim.maps.cells import Cell, Pos
+from evosim.maps.cells import Pos
 
 
 @dataclass
@@ -21,7 +21,8 @@ class Resource(Element):
         self.grow_delta: grow_delta
 
     def grow(self) -> None:
-        self.hp = max(self.hp, self.hp + self.grow_delta)
+        self.hp += self.grow_delta
+        self.hp = min(self.max_hp, self.hp)
 
 
 class Obstacle(Element):
