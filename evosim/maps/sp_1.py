@@ -226,6 +226,11 @@ class SinglePlayerMap(BaseMap):
                 # If the position isn't valid, skip the step
                 logger.warning("Not possible to move to %s. Wasted Step", next_pos)
                 reward -= self.wasted_pn
+
+                # Agent using effort
+                self.agent.run()
+                self._grow_resources()
+
                 return self._get_current_state(), reward, terminated, truncated
 
             # Checking if the cell is free to move the agent
