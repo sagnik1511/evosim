@@ -10,9 +10,13 @@ from torch.distributions import Categorical
 from torch.nn import functional as F
 
 from evosim.policy.base_policy import BasePolicy
+from evosim.utils.logger import get_logger
 
 MapState = Dict[str, List[List[int]]]
 TT = torch.Tensor
+
+
+logger = get_logger()
 
 
 class Memory:
@@ -122,6 +126,7 @@ class PPO(BasePolicy):
         gamma: float = 0.95,
         eps_clip: float = 0.2,
         k_epochs: int = 100,
+        target_kl_div: float = 0.1,
         entropy_bonus: float = 0.05,
         value_scaling_factor: float = 0.5,
         learn_counter: int = 50,
@@ -136,6 +141,7 @@ class PPO(BasePolicy):
         self.gamma = gamma
         self.eps_clip = eps_clip
         self.k_epochs = k_epochs
+        self.target_kl_div = target_kl_div
         self.ent_bonus = entropy_bonus
         self.vs_factor = value_scaling_factor
         self.memory = Memory()
@@ -190,6 +196,18 @@ class PPO(BasePolicy):
 
         return torch.tensor(advantages).unsqueeze(0)
 
+    def _calculate_kl_div(self, old_log_probs: TT, new_log_probs: TT) -> TT:
+
+        # This is monte-carlo estimate of KL-Div
+        return (old_log_probs - new_log_probs).mean().detach()
+
+    def _calculate_schulman_kl_div(self, old_log_probs: TT, new_log_probs: TT) -> TT:
+
+        # This is the current kl-div fn used in stable-baselines3
+        # For testing we have kept this in here
+        ratio = old_log_probs - new_log_probs
+        return torch.mean((torch.exp(new_log_probs) - 1) - ratio)
+
     def learn(self) -> None:
         """Learning Step"""
 
@@ -221,15 +239,22 @@ class PPO(BasePolicy):
                 torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
             )
 
+            kl_div = self._calculate_kl_div(stale_log_probs, new_log_probs)
+            if kl_div >= self.target_kl_div:
+                logger.warning(
+                    "Model has diverged too much. Stopping training on current batch"
+                )
+                break
+
+            ppo_loss: TT = -torch.min(cpi_surr, clip_surr).mean()
+            value_loss: TT = F.mse_loss(values, returns) * self.vs_factor
+            entropy_reward: TT = entropy * self.ent_bonus
+
             # Complete Loss Formula
-            ppo_loss: TT = (
-                -torch.min(cpi_surr, clip_surr).mean()
-                + F.mse_loss(values, returns) * self.vs_factor
-                - entropy * self.ent_bonus
-            )
+            loss = ppo_loss + value_loss - entropy_reward
 
             # Update gradients and optimize the weights
-            ppo_loss.backward()
+            loss.backward()
             self.optimizer.step()
 
     def observe(
