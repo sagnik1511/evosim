@@ -240,7 +240,7 @@ class SinglePlayerMap(BaseMap):
                 # Moved the agent to blank cell
                 self._move_object(agent_pos, next_pos)
                 agent_pos = next_pos
-                reward -= self.wasted_pn / 5
+                reward += self.wasted_pn / 5
             else:
 
                 # Checking is resources are in the cell
